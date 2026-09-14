@@ -1,11 +1,18 @@
 /**
  * DG8WA (Seb's) CW Arcade ICR Trainer
  * Developed with AI Assistance
- * Version 1.8.1
+ * Version 1.8.2
  */
 
 function toggleHelpModal(show) {
     document.getElementById('help-modal').style.display = show ? 'flex' : 'none';
+}
+
+function focusMobileInput() {
+    const inp = document.getElementById('mobile-input');
+    if (inp) {
+        inp.focus();
+    }
 }
 
 function updateVal(type) {
@@ -105,7 +112,7 @@ function changeLanguage() {
 }
 
 function setPreset(type) {
-    clearAll(); // Exclusive selection!
+    clearAll();
     const checkboxes = document.querySelectorAll('#setup-screen input[type="checkbox"]');
     
     if (type === 'koch') {
@@ -444,7 +451,7 @@ function speakCharacter(char) {
 
         let textToSpeak = (localizedNames[selectedLang] && localizedNames[selectedLang][char]) ? localizedNames[selectedLang][char] : char;
         const utterance = new SpeechSynthesisUtterance(textToSpeak);
-        utterance.lang = selectedLang; // Robust lang assignment for iframe / html-preview
+        utterance.lang = selectedLang;
 
         const chosenVoice = getBestVoiceForLang(selectedLang);
         if (chosenVoice) {
@@ -601,6 +608,8 @@ async function startGame(withBadChars = false) {
     const display = document.getElementById('display-box');
     display.style.color = '#fff';
 
+    focusMobileInput();
+
     display.innerText = "BENS BEST BENT WIRE";
     await playMorseSequence("BENS BEST BENT WIRE", wpm, pitch);
     if (!isPlaying) return;
@@ -655,6 +664,7 @@ function togglePause() {
         btn.innerText = "Pause";
         display.innerText = "*";
         startTime = performance.now();
+        focusMobileInput();
         nextRound();
     }
 }
@@ -749,6 +759,7 @@ async function nextRound() {
     if (!isPlaying || isPaused) return;
     waitingForInput = false;
     clearTimeout(ttsTimeoutHandle);
+    focusMobileInput();
 
     const checked = document.querySelectorAll('#setup-screen input[type="checkbox"]:checked');
     const baseChars = Array.from(checked).map(cb => cb.value);
@@ -840,6 +851,69 @@ function updateLivesDisplay() {
     }
 }
 
+async function processKeyInput(typedKey) {
+    if (!isPlaying || isPaused || !waitingForInput || currentGameMode === 'listen') return;
+
+    waitingForInput = false;
+    clearTimeout(ttsTimeoutHandle);
+    const duration = performance.now() - startTime;
+    document.getElementById('display-box').innerText = currentTargetChar;
+
+    const icrTargetMs = parseInt(document.getElementById('icr-target').value);
+    const keyHitDelayMs = parseInt(document.getElementById('keyhit-delay').value || "200");
+    const combinedTargetMs = icrTargetMs + keyHitDelayMs;
+    const ttsDelayMs = parseInt(document.getElementById('tts-delay').value);
+
+    if (typedKey === currentTargetChar) {
+        totalCompletedCharsCount++;
+        sessionStats[currentTargetChar].times.push(duration);
+
+        let basePoints = 1;
+        if (duration <= combinedTargetMs) {
+            targetMetCount++;
+            const speedRatio = 1 - (duration / combinedTargetMs);
+            basePoints = 4 + Math.round(speedRatio * 2);
+        } else if (duration <= ttsDelayMs) {
+            const marginRatio = 1 - ((duration - combinedTargetMs) / (ttsDelayMs - combinedTargetMs));
+            basePoints = 1 + Math.round(marginRatio * 2);
+        } else {
+            basePoints = 1;
+        }
+
+        streak++;
+        const streakMultiplier = Math.min(3.0, 1.0 + (Math.floor(streak / 5) * 0.5));
+        const earnedPoints = Math.round(basePoints * streakMultiplier);
+
+        score += earnedPoints;
+        document.getElementById('hud-score').innerText = score;
+        document.getElementById('hud-streak').innerText = `${streak} 🔥`;
+
+        await playPositiveSound();
+    } else {
+        sessionStats[currentTargetChar].errors++;
+        streak = 0;
+        document.getElementById('hud-streak').innerText = `${streak} 🔥`;
+        const display = document.getElementById('display-box');
+        display.style.color = 'var(--error)';
+
+        if (currentGameMode === 'lives') {
+            lives--;
+            updateLivesDisplay();
+            if (lives <= 0) {
+                await playNegativeSound();
+                await speakCharacter(currentTargetChar);
+                stopGame(false);
+                return;
+            }
+        }
+
+        await playNegativeSound();
+        await speakCharacter(currentTargetChar);
+    }
+
+    if (isPlaying && !isPaused) nextRound();
+}
+
 window.addEventListener('keydown', async (e) => {
     const summaryVisible = document.getElementById('summary-screen').style.display === 'block';
     if (summaryVisible) {
@@ -913,64 +987,7 @@ window.addEventListener('keydown', async (e) => {
 
     if (activeChars.includes(typedKey)) {
         e.preventDefault();
-        waitingForInput = false;
-        clearTimeout(ttsTimeoutHandle);
-        const duration = performance.now() - startTime;
-        document.getElementById('display-box').innerText = currentTargetChar;
-
-        const icrTargetMs = parseInt(document.getElementById('icr-target').value);
-        const keyHitDelayMs = parseInt(document.getElementById('keyhit-delay').value || "200");
-        const combinedTargetMs = icrTargetMs + keyHitDelayMs;
-        const ttsDelayMs = parseInt(document.getElementById('tts-delay').value);
-
-        if (typedKey === currentTargetChar) {
-            totalCompletedCharsCount++;
-            sessionStats[currentTargetChar].times.push(duration);
-
-            let basePoints = 1;
-            if (duration <= combinedTargetMs) {
-                targetMetCount++;
-                const speedRatio = 1 - (duration / combinedTargetMs);
-                basePoints = 4 + Math.round(speedRatio * 2);
-            } else if (duration <= ttsDelayMs) {
-                const marginRatio = 1 - ((duration - combinedTargetMs) / (ttsDelayMs - combinedTargetMs));
-                basePoints = 1 + Math.round(marginRatio * 2);
-            } else {
-                basePoints = 1;
-            }
-
-            streak++;
-            const streakMultiplier = Math.min(3.0, 1.0 + (Math.floor(streak / 5) * 0.5));
-            const earnedPoints = Math.round(basePoints * streakMultiplier);
-
-            score += earnedPoints;
-            document.getElementById('hud-score').innerText = score;
-            document.getElementById('hud-streak').innerText = `${streak} 🔥`;
-
-            await playPositiveSound();
-        } else {
-            sessionStats[currentTargetChar].errors++;
-            streak = 0;
-            document.getElementById('hud-streak').innerText = `${streak} 🔥`;
-            const display = document.getElementById('display-box');
-            display.style.color = 'var(--error)';
-
-            if (currentGameMode === 'lives') {
-                lives--;
-                updateLivesDisplay();
-                if (lives <= 0) {
-                    await playNegativeSound();
-                    await speakCharacter(currentTargetChar);
-                    stopGame(false);
-                    return;
-                }
-            }
-
-            await playNegativeSound();
-            await speakCharacter(currentTargetChar);
-        }
-
-        if (isPlaying && !isPaused) nextRound();
+        processKeyInput(typedKey);
     }
 });
 
@@ -1089,4 +1106,16 @@ function renderLeaderboard() {
 
 document.addEventListener('DOMContentLoaded', () => {
     loadSettings();
+
+    const mobileInput = document.getElementById('mobile-input');
+    if (mobileInput) {
+        mobileInput.addEventListener('input', (e) => {
+            const val = mobileInput.value;
+            mobileInput.value = '';
+            if (val && val.length > 0) {
+                const typedKey = val.slice(-1).toUpperCase();
+                processKeyInput(typedKey);
+            }
+        });
+    }
 });
