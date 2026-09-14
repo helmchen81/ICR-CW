@@ -1,7 +1,7 @@
 /**
  * DG8WA (Seb's) CW Arcade ICR Trainer
  * Developed with AI Assistance
- * Version 1.8.0
+ * Version 1.8.1
  */
 
 function toggleHelpModal(show) {
@@ -105,7 +105,7 @@ function changeLanguage() {
 }
 
 function setPreset(type) {
-    clearAll();
+    clearAll(); // Exclusive selection!
     const checkboxes = document.querySelectorAll('#setup-screen input[type="checkbox"]');
     
     if (type === 'koch') {
@@ -211,7 +211,6 @@ function unlockAudio() {
     if (audioCtx && audioCtx.state === 'suspended') {
         audioCtx.resume();
     }
-    // Mobile Chrome/Android Silent Buffer Unlock
     if (audioCtx) {
         try {
             const buffer = audioCtx.createBuffer(1, 1, 22050);
@@ -245,18 +244,17 @@ if ('speechSynthesis' in window) {
 }
 
 function getBestVoiceForLang(langCode) {
-    if (!cachedVoices || cachedVoices.length === 0) {
-        initVoices();
-    }
-    if (!cachedVoices || cachedVoices.length === 0) return null;
+    let voices = ('speechSynthesis' in window) ? window.speechSynthesis.getVoices() : [];
+    if (!voices || voices.length === 0) voices = cachedVoices;
+    if (!voices || voices.length === 0) return null;
 
     const targetFull = langCode.toLowerCase().replace('_', '-');
     const targetPrefix = targetFull.split('-')[0];
 
-    let match = cachedVoices.find(v => v.lang.toLowerCase().replace('_', '-') === targetFull && v.localService) ||
-                cachedVoices.find(v => v.lang.toLowerCase().replace('_', '-') === targetFull) ||
-                cachedVoices.find(v => v.lang.toLowerCase().startsWith(targetPrefix) && v.localService) ||
-                cachedVoices.find(v => v.lang.toLowerCase().startsWith(targetPrefix));
+    let match = voices.find(v => v.lang.toLowerCase().replace('_', '-') === targetFull && v.localService) ||
+                voices.find(v => v.lang.toLowerCase().replace('_', '-') === targetFull) ||
+                voices.find(v => v.lang.toLowerCase().startsWith(targetPrefix) && v.localService) ||
+                voices.find(v => v.lang.toLowerCase().startsWith(targetPrefix));
 
     return match || null;
 }
@@ -446,13 +444,12 @@ function speakCharacter(char) {
 
         let textToSpeak = (localizedNames[selectedLang] && localizedNames[selectedLang][char]) ? localizedNames[selectedLang][char] : char;
         const utterance = new SpeechSynthesisUtterance(textToSpeak);
-        
+        utterance.lang = selectedLang; // Robust lang assignment for iframe / html-preview
+
         const chosenVoice = getBestVoiceForLang(selectedLang);
         if (chosenVoice) {
             utterance.voice = chosenVoice;
             utterance.lang = chosenVoice.lang;
-        } else {
-            utterance.lang = selectedLang;
         }
 
         utterance.rate = 1.0;
@@ -577,7 +574,7 @@ async function startGame(withBadChars = false) {
         document.getElementById('hud-time').innerText = `${timeLeft}s`;
     } else {
         lives = 5;
-        if (modeTxt) modeTxt.innerText = "Lives";
+        if (modeTxt) modeTxt.innerText = "Battle";
         updateLivesDisplay();
     }
 
@@ -994,7 +991,7 @@ function saveScore(callsign, finalScore) {
         settingsDesc = `${duration} Min, ${wpm}WPM, ${pitch}Hz, ICR:${icr}+${keyhit}ms, ${charCount} Chars`;
     } else {
         storageKey = 'cw_arcade_lb_lives';
-        settingsDesc = `Arcade (5 Lives), ${wpm}WPM, ${pitch}Hz, ICR:${icr}+${keyhit}ms, ${charCount} Chars`;
+        settingsDesc = `Battle (5 Lives), ${wpm}WPM, ${pitch}Hz, ICR:${icr}+${keyhit}ms, ${charCount} Chars`;
     }
 
     let lb = JSON.parse(localStorage.getItem(storageKey) || '[]');
@@ -1090,7 +1087,6 @@ function renderLeaderboard() {
     `).join('');
 }
 
-// Initial settings load on DOM Ready
 document.addEventListener('DOMContentLoaded', () => {
     loadSettings();
 });
