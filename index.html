@@ -32,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['score'])) {
         <div class="section">
             <div class="row">
                 <div style="flex: 1.2;">
-                    <label for="callsign">Callsign (for Stats)</label>
+                    <label for="callsign">Callsign (for Leaderboard)</label>
                     <input type="text" id="callsign" value="DG8WA" placeholder="e.g. DG8WA">
                 </div>
                 <div>
@@ -151,22 +151,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['score'])) {
             </div>
         </div>
 
-        <div class="footer-info">DG8WA (Seb's) CW Arcade ICR Trainer &bull; Version 1.8.1 &bull; Developed with AI Assistance</div>
+        <div class="footer-info">DG8WA (Seb's) CW Arcade ICR Trainer &bull; Version 1.8.2 &bull; Developed with AI Assistance</div>
     </div>
 
     <!-- TRAINER SCREEN -->
     <div id="trainer-screen">
+        <!-- Invisible Input for Mobile Soft-Keyboard Activation -->
+        <input type="text" id="mobile-input" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" inputmode="text" style="opacity:0; position:absolute; left:-9999px; width:1px; height:1px;">
+
         <div class="game-hud">
             <span><span id="hud-txt-mode">Time</span>: <strong id="hud-time">120s</strong></span>
             <span>Score: <strong id="hud-score" style="color:var(--success)">0</strong></span>
             <span>Streak: <strong id="hud-streak">0 🔥</strong></span>
         </div>
 
-        <div class="char-display" id="display-box">?</div>
+        <div class="char-display" id="display-box" onclick="focusMobileInput()" style="cursor:pointer;">?</div>
         
         <div class="input-hint" id="hud-hint">Type recognized character (Spacebar = Pause)</div>
 
         <div class="btn-group">
+            <button type="button" class="btn-secondary" onclick="focusMobileInput()">⌨️ Keyb</button>
             <button type="button" class="btn-secondary" id="pause-btn" onclick="togglePause()">Pause</button>
             <button type="button" class="btn-danger" id="quit-btn" onclick="stopGame(true)">Give Up</button>
         </div>
