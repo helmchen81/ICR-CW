@@ -491,13 +491,13 @@
                     <input type="range" id="run-duration" min="1" max="10" step="1" value="2" oninput="updateVal('duration')">
                 </div>
 
-                <!-- ICR Target Time (calculated via PARIS Standard: 3600 / WPM ms) -->
+                <!-- ICR Target Time -->
                 <div class="slider-item">
                     <label for="icr-target">ICR Target: <span id="icr-val" style="color:var(--accent)">103</span> ms</label>
                     <input type="range" id="icr-target" min="50" max="1000" step="1" value="103" oninput="updateVal('icr')">
                 </div>
 
-                <!-- TTS Delay (+300 ms over ICR) -->
+                <!-- TTS Delay -->
                 <div class="slider-item">
                     <label for="tts-delay">TTS Delay: <span id="tts-val" style="color:var(--accent)">403</span> ms</label>
                     <input type="range" id="tts-delay" min="100" max="1500" step="1" value="403" oninput="updateVal('tts')">
@@ -534,7 +534,7 @@
             </div>
         </div>
 
-        <div class="footer-info">DG8WA (Seb's) CW Arcade ICR Trainer &bull; Version 1.7.1</div>
+        <div class="footer-info">DG8WA (Seb's) CW Arcade ICR Trainer &bull; Version 1.7.2</div>
     </div>
 
     <!-- TRAINER SCREEN -->
@@ -646,10 +646,7 @@
             const wpm = parseInt(document.getElementById('wpm').value);
             document.getElementById('wpm-val').innerText = wpm;
 
-            // PARIS Standard: 1 Dit = 1200ms / WPM. Inter-character space = 3 Dits = 3600ms / WPM.
             let autoIcr = Math.round(3600 / wpm);
-
-            // TTS delay is exactly 300ms higher than ICR target time
             let autoTts = autoIcr + 300;
 
             document.getElementById('icr-target').value = autoIcr;
@@ -822,17 +819,6 @@
 
     loadSettings();
 
-    let availableVoices = [];
-    function loadVoices() {
-        if ('speechSynthesis' in window) {
-            availableVoices = window.speechSynthesis.getVoices();
-        }
-    }
-    if ('speechSynthesis' in window) {
-        loadVoices();
-        window.speechSynthesis.onvoiceschanged = loadVoices;
-    }
-
     let audioCtx = null;
     let noiseNode = null;
     let noiseGainNode = null;
@@ -914,7 +900,7 @@
         code.split('').forEach(sym => {
             seconds += (sym === '.' ? dotDuration : dotDuration * 3) + dotDuration;
         });
-        seconds += dotDuration * 2; // PARIS Standard 3 dits total space
+        seconds += dotDuration * 2;
         return seconds * 1000;
     }
 
@@ -985,7 +971,7 @@
 
                 time += dur + dotDuration;
             });
-            time += dotDuration * 2; // PARIS inter-character space (3 dits total)
+            time += dotDuration * 2;
         });
 
         const totalDurationMs = Math.max(0, (time - audioCtx.currentTime) * 1000);
@@ -998,32 +984,41 @@
 
     function speakCharacter(char) {
         return new Promise((resolve) => {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                let textToSpeak = char;
-                if (char === 'CH') textToSpeak = "C H";
-                if (char === '@') textToSpeak = "At symbol";
-                if (char === '-') textToSpeak = "Hyphen";
-                if (char === '+') textToSpeak = "Plus";
-                const utterance = new SpeechSynthesisUtterance(textToSpeak);
-                
-                const selectedLang = document.getElementById('tts-lang').value;
-                utterance.lang = selectedLang;
-
-                if (availableVoices.length === 0) loadVoices();
-                const targetLangPrefix = selectedLang.split('-')[0];
-                const matchingVoice = availableVoices.find(v => v.lang === selectedLang || v.lang.replace('_','-') === selectedLang || v.lang.startsWith(targetLangPrefix));
-                if (matchingVoice) {
-                    utterance.voice = matchingVoice;
-                }
-
-                utterance.rate = 1.2;
-                utterance.onend = resolve;
-                utterance.onerror = resolve;
-                window.speechSynthesis.speak(utterance);
-            } else {
+            if (!('speechSynthesis' in window)) {
                 resolve();
+                return;
             }
+            window.speechSynthesis.cancel();
+            
+            const selectedLang = document.getElementById('tts-lang').value;
+            
+            const localizedNames = {
+                'de-DE': { '@': 'At-Zeichen', '-': 'Bindestrich', '+': 'Plus', 'CH': 'C H' },
+                'en-US': { '@': 'At symbol', '-': 'Hyphen', '+': 'Plus', 'CH': 'C H' },
+                'es-ES': { '@': 'Arroba', '-': 'Guion', '+': 'Más', 'CH': 'C H' },
+                'fr-FR': { '@': 'Arobase', '-': 'Tiret', '+': 'Plus', 'CH': 'C H' }
+            };
+
+            let textToSpeak = (localizedNames[selectedLang] && localizedNames[selectedLang][char]) ? localizedNames[selectedLang][char] : char;
+            const utterance = new SpeechSynthesisUtterance(textToSpeak);
+            utterance.lang = selectedLang;
+
+            const voices = window.speechSynthesis.getVoices();
+            if (voices.length > 0) {
+                const targetLangPrefix = selectedLang.split('-')[0].toLowerCase();
+                const targetFull = selectedLang.toLowerCase().replace('_', '-');
+                
+                let voice = voices.find(v => v.lang.toLowerCase().replace('_', '-') === targetFull) ||
+                            voices.find(v => v.lang.toLowerCase().startsWith(targetLangPrefix));
+                if (voice) {
+                    utterance.voice = voice;
+                }
+            }
+
+            utterance.rate = 1.1;
+            utterance.onend = resolve;
+            utterance.onerror = resolve;
+            window.speechSynthesis.speak(utterance);
         });
     }
 
@@ -1373,6 +1368,11 @@
     window.addEventListener('keydown', async (e) => {
         if (!isPlaying) return;
 
+        // Prevent browser Quick Find (e.g. '/' or '\'') during active gameplay
+        if (e.key === '/' || e.key === "'") {
+            e.preventDefault();
+        }
+
         if (e.key === ' ') {
             e.preventDefault();
             togglePause();
@@ -1424,6 +1424,7 @@
         const activeChars = Array.from(checked).map(cb => cb.value);
 
         if (activeChars.includes(typedKey)) {
+            e.preventDefault(); // Prevents browser shortcuts or focus shifts
             waitingForInput = false;
             clearTimeout(ttsTimeoutHandle);
             const duration = performance.now() - startTime;
