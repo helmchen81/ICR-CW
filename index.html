@@ -38,32 +38,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['score'])) {
                 <div>
                     <label>Game Mode</label>
                     <select id="game-mode" onchange="handleModeChange()">
-                        <option value="time">Time Attack Mode</option>
-                        <option value="lives">Arcade Mode (5 Lives ❤️)</option>
-                        <option value="listen">Listen Mode (Just Listen & TTS 🎧)</option>
+                        <option value="time">Time</option>
+                        <option value="lives">Battle</option>
+                        <option value="listen">Listen</option>
                     </select>
                 </div>
-                <div>
-                    <label>TTS Voice Language</label>
+                <div style="max-width: 80px;">
+                    <label>Voice</label>
                     <select id="tts-lang" onchange="changeLanguage()">
-                        <option value="de-DE">Deutsch (DE)</option>
-                        <option value="en-US">English (EN)</option>
-                        <option value="es-ES">Español (ES)</option>
-                        <option value="fr-FR">Français (FR)</option>
+                        <option value="de-DE">DE</option>
+                        <option value="en-US">EN</option>
+                        <option value="es-ES">ES</option>
+                        <option value="fr-FR">FR</option>
                     </select>
                 </div>
             </div>
         </div>
 
-        <!-- Cleanly Separated Character Sets -->
+        <!-- Exclusive Character Sets -->
         <div class="section">
             <label>Character Sets</label>
             <div class="presets">
                 <button type="button" onclick="setPreset('koch')">Koch (KRM...)</button>
-                <button type="button" onclick="setPreset('alpha')">+ A-Z</button>
-                <button type="button" onclick="setPreset('num')">+ 0-9</button>
-                <button type="button" onclick="setPreset('signs')">+ Punctuation</button>
-                <button type="button" onclick="setPreset('lang')">+ Special Chars</button>
+                <button type="button" onclick="setPreset('alpha')">A-Z</button>
+                <button type="button" onclick="setPreset('num')">0-9</button>
+                <button type="button" onclick="setPreset('signs')">Punctuation</button>
+                <button type="button" onclick="setPreset('lang')">Special Chars</button>
                 <button type="button" onclick="clearAll()">Deselect All</button>
             </div>
 
@@ -141,8 +141,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['score'])) {
         <div class="leaderboard" id="local-lb">
             <h3>Leaderboard</h3>
             <div style="display: flex; gap: 4px; margin-bottom: 6px;">
-                <button type="button" class="btn-secondary" id="lb-tab-time" style="padding: 3px 6px; font-size: 0.72rem; background: var(--accent); color: #000;" onclick="switchLbTab('time')">Time Attack</button>
-                <button type="button" class="btn-secondary" id="lb-tab-lives" style="padding: 3px 6px; font-size: 0.72rem;" onclick="switchLbTab('lives')">Arcade (Lives)</button>
+                <button type="button" class="btn-secondary" id="lb-tab-time" style="padding: 3px 6px; font-size: 0.72rem; background: var(--accent); color: #000;" onclick="switchLbTab('time')">Time</button>
+                <button type="button" class="btn-secondary" id="lb-tab-lives" style="padding: 3px 6px; font-size: 0.72rem;" onclick="switchLbTab('lives')">Battle</button>
             </div>
             <div id="lb-content"><span style="color:#666">No runs recorded yet.</span></div>
             <div id="lb-controls" style="display: flex; gap: 4px; margin-top: 6px; display: none;">
@@ -151,7 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['score'])) {
             </div>
         </div>
 
-        <div class="footer-info">DG8WA (Seb's) CW Arcade ICR Trainer &bull; Version 1.8.0 &bull; Developed with AI Assistance</div>
+        <div class="footer-info">DG8WA (Seb's) CW Arcade ICR Trainer &bull; Version 1.8.1 &bull; Developed with AI Assistance</div>
     </div>
 
     <!-- TRAINER SCREEN -->
@@ -215,9 +215,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['score'])) {
 
         <div class="help-item">
             <h4>Game Modes</h4>
-            <p><strong>Time Attack Mode:</strong> Practice for a set duration (1 to 10 minutes) and maximize your score.<br>
-            <strong>Arcade Mode (5 Lives):</strong> Start with 5 lives. Each mistake or timeout costs 1 life.<br>
-            <strong>Listen Mode:</strong> Pure listening practice. Plays Morse sound, pauses for ICR recognition time, reveals letter and speaks it via TTS automatically without keypresses or scoring.</p>
+            <p><strong>Time:</strong> Practice for a set duration (1 to 10 minutes) and maximize your score.<br>
+            <strong>Battle:</strong> Start with 5 lives. Each mistake or timeout costs 1 life.<br>
+            <strong>Listen:</strong> Pure listening practice. Plays Morse sound, pauses for ICR recognition time, reveals letter and speaks it via TTS automatically without keypresses or scoring.</p>
         </div>
 
         <div class="help-item">
