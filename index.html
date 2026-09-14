@@ -1,0 +1,251 @@
+<?php
+// Highscore-Log Backend Handler
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['score'])) {
+    $callsign = preg_replace('/[^A-Z0-9\/]/i', '', $_POST['callsign']);
+    $score = intval($_POST['score']);
+    $mode = isset($_POST['mode']) ? $_POST['mode'] : 'time';
+    $settings = isset($_POST['settings']) ? htmlspecialchars($_POST['settings']) : '';
+    $timestamp = date('Y-m-d H:i:s');
+    $entry = "[$timestamp] Highscore ($mode) - Call: $callsign | Score: $score Pkts. | Settings: $settings\n";
+    @file_put_contents('cw_highscores.log', $entry, FILE_APPEND);
+    exit;
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DG8WA (Seb's) CW Arcade ICR Trainer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+    <div class="header-bar">
+        <h1>DG8WA (Seb's) CW Arcade ICR Trainer</h1>
+        <button type="button" class="btn-help" onclick="toggleHelpModal(true)">? Help</button>
+    </div>
+
+    <!-- SETUP SCREEN -->
+    <div id="setup-screen">
+        <div class="section">
+            <div class="row">
+                <div style="flex: 1.2;">
+                    <label for="callsign">Callsign (for Leaderboard)</label>
+                    <input type="text" id="callsign" value="DG8WA" placeholder="e.g. DG8WA">
+                </div>
+                <div>
+                    <label>Game Mode</label>
+                    <select id="game-mode" onchange="handleModeChange()">
+                        <option value="time">Time Attack Mode</option>
+                        <option value="lives">Arcade Mode (5 Lives ❤️)</option>
+                        <option value="listen">Listen Mode (Just Listen & TTS 🎧)</option>
+                    </select>
+                </div>
+                <div>
+                    <label>TTS Voice Language</label>
+                    <select id="tts-lang" onchange="changeLanguage()">
+                        <option value="de-DE">Deutsch (DE)</option>
+                        <option value="en-US">English (EN)</option>
+                        <option value="es-ES">Español (ES)</option>
+                        <option value="fr-FR">Français (FR)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cleanly Separated Character Sets -->
+        <div class="section">
+            <label>Character Sets</label>
+            <div class="presets">
+                <button type="button" onclick="setPreset('koch')">Koch (KRM...)</button>
+                <button type="button" onclick="setPreset('alpha')">+ A-Z</button>
+                <button type="button" onclick="setPreset('num')">+ 0-9</button>
+                <button type="button" onclick="setPreset('signs')">+ Punctuation</button>
+                <button type="button" onclick="setPreset('lang')">+ Special Chars</button>
+                <button type="button" onclick="clearAll()">Deselect All</button>
+            </div>
+
+            <div class="charset-category">
+                <span>Letters (A-Z)</span>
+                <div class="checkbox-group" id="group-alpha"></div>
+            </div>
+
+            <div class="charset-category">
+                <span>Numbers (0-9)</span>
+                <div class="checkbox-group" id="group-num"></div>
+            </div>
+
+            <div class="charset-category">
+                <span>Standard Punctuation</span>
+                <div class="checkbox-group" id="group-signs"></div>
+            </div>
+
+            <div class="charset-category">
+                <span>Special / Accented Characters</span>
+                <div class="checkbox-group" id="group-lang"></div>
+            </div>
+        </div>
+
+        <!-- Sliders Grid -->
+        <div class="section">
+            <div class="sliders-grid">
+                <div class="slider-item">
+                    <label for="wpm">Speed: <span id="wpm-val" style="color:var(--accent)">35</span> WPM</label>
+                    <input type="range" id="wpm" min="25" max="60" step="1" value="35" oninput="updateVal('wpm')">
+                </div>
+
+                <div class="slider-item">
+                    <label for="pitch">Pitch: <span id="pitch-val" style="color:var(--accent)">600</span> Hz</label>
+                    <input type="range" id="pitch" min="400" max="800" step="10" value="600" oninput="updateVal('pitch')">
+                </div>
+
+                <div class="slider-item" id="duration-section">
+                    <label for="run-duration">Duration: <span id="duration-val" style="color:var(--accent)">2</span> Min</label>
+                    <input type="range" id="run-duration" min="1" max="10" step="1" value="2" oninput="updateVal('duration')">
+                </div>
+
+                <div class="slider-item">
+                    <label for="icr-target">ICR Mental Target: <span id="icr-val" style="color:var(--accent)">103</span> ms</label>
+                    <input type="range" id="icr-target" min="50" max="1000" step="1" value="103" oninput="updateVal('icr')">
+                </div>
+
+                <div class="slider-item">
+                    <label for="keyhit-delay">Key Hit Delay: <span id="keyhit-val" style="color:var(--accent)">200</span> ms</label>
+                    <input type="range" id="keyhit-delay" min="100" max="600" step="10" value="200" oninput="updateVal('keyhit')">
+                </div>
+
+                <div class="slider-item">
+                    <label for="tts-delay">TTS Delay: <span id="tts-val" style="color:var(--accent)">453</span> ms</label>
+                    <input type="range" id="tts-delay" min="100" max="1500" step="1" value="453" oninput="updateVal('tts')">
+                </div>
+
+                <div class="slider-item" style="grid-column: span 2;">
+                    <label for="noise-vol">Static QRM: <span id="noise-val" style="color:var(--accent)">10</span>%</label>
+                    <input type="range" id="noise-vol" min="0" max="100" step="1" value="10" oninput="updateVal('noise')">
+                </div>
+            </div>
+
+            <div style="margin-top: 6px;">
+                <label for="backend-mode">Leaderboard Backend (PHP)</label>
+                <select id="backend-mode">
+                    <option value="php">Enabled (Save to server)</option>
+                    <option value="local">Local Only</option>
+                </select>
+            </div>
+        </div>
+
+        <button type="button" class="btn-primary" onclick="startGame(false)" style="width: 100%; margin-top: 4px;" id="btn-start">START GAME</button>
+        
+        <div class="leaderboard" id="local-lb">
+            <h3>Leaderboard</h3>
+            <div style="display: flex; gap: 4px; margin-bottom: 6px;">
+                <button type="button" class="btn-secondary" id="lb-tab-time" style="padding: 3px 6px; font-size: 0.72rem; background: var(--accent); color: #000;" onclick="switchLbTab('time')">Time Attack</button>
+                <button type="button" class="btn-secondary" id="lb-tab-lives" style="padding: 3px 6px; font-size: 0.72rem;" onclick="switchLbTab('lives')">Arcade (Lives)</button>
+            </div>
+            <div id="lb-content"><span style="color:#666">No runs recorded yet.</span></div>
+            <div id="lb-controls" style="display: flex; gap: 4px; margin-top: 6px; display: none;">
+                <button type="button" class="btn-secondary" id="lb-toggle-btn" style="padding: 4px; font-size: 0.72rem; flex:2;" onclick="toggleLeaderboardView()">Show All</button>
+                <button type="button" class="btn-danger" id="lb-reset-btn" style="padding: 4px; font-size: 0.72rem; flex:1;" onclick="resetLeaderboard()">Reset</button>
+            </div>
+        </div>
+
+        <div class="footer-info">DG8WA (Seb's) CW Arcade ICR Trainer &bull; Version 1.8.0 &bull; Developed with AI Assistance</div>
+    </div>
+
+    <!-- TRAINER SCREEN -->
+    <div id="trainer-screen">
+        <div class="game-hud">
+            <span><span id="hud-txt-mode">Time</span>: <strong id="hud-time">120s</strong></span>
+            <span>Score: <strong id="hud-score" style="color:var(--success)">0</strong></span>
+            <span>Streak: <strong id="hud-streak">0 🔥</strong></span>
+        </div>
+
+        <div class="char-display" id="display-box">?</div>
+        
+        <div class="input-hint" id="hud-hint">Type recognized character (Spacebar = Pause)</div>
+
+        <div class="btn-group">
+            <button type="button" class="btn-secondary" id="pause-btn" onclick="togglePause()">Pause</button>
+            <button type="button" class="btn-danger" id="quit-btn" onclick="stopGame(true)">Give Up</button>
+        </div>
+    </div>
+
+    <!-- SUMMARY SCREEN -->
+    <div id="summary-screen">
+        <h2 style="color:var(--accent); margin-top:0; font-size: 1.1rem;">ICR & Performance Summary</h2>
+        
+        <div class="summary-stats" style="margin-bottom:8px; text-align:center; background:#1b1b1b; padding:8px;">
+            <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:4px;">True ICR Speed & Target Fulfillment:</div>
+            <div style="font-size:1.15rem; font-weight:bold; color:var(--success);" id="sum-icr-ratio">0 completed (Theoretical maximum: ~0)</div>
+            <div style="font-size:0.75rem; color:var(--accent); margin-top:3px;" id="sum-icr-percent">ICR Efficiency: 0%</div>
+            <div style="font-size:0.75rem; color:var(--warning); margin-top:2px;" id="sum-target-percent">Within Target Time (ICR + KeyHit): 0%</div>
+        </div>
+
+        <div class="game-hud" style="margin-bottom:10px;">
+            <span>Score: <strong id="sum-score" style="color:var(--success)">0</strong></span>
+            <span>Correct: <strong id="sum-count">0</strong></span>
+            <span>Avg Reaction: <strong id="sum-avg">0 ms</strong></span>
+        </div>
+
+        <label>Character Detail Analysis</label>
+        <div class="summary-stats" id="sum-details"></div>
+
+        <div class="btn-group" style="flex-direction: column; gap: 6px;">
+            <button type="button" class="btn-primary" onclick="startGame(false)">New Run (Normal) [Enter]</button>
+            <button type="button" class="btn-secondary" style="background:#ffb74d; color:#000;" onclick="startGame(true)">🔥 New Run with Weak Characters [Space]</button>
+            <button type="button" class="btn-danger" onclick="returnToSetup()">To Setup Menu</button>
+        </div>
+    </div>
+</div>
+
+<!-- HELP MODAL -->
+<div class="modal-overlay" id="help-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>User Guide & Features</h2>
+            <button type="button" class="modal-close" onclick="toggleHelpModal(false)">&times;</button>
+        </div>
+        
+        <div class="help-item">
+            <h4>Instant Character Recognition (ICR) & PARIS Standard</h4>
+            <p>ICR trains instant mental recognition without counting dits/dahs. Under the PARIS standard (1 word = 50 dits), 1 dit duration is <em>1200 / WPM ms</em>. Standard inter-character space equals 3 dits (<em>3600 / WPM ms</em>).</p>
+        </div>
+
+        <div class="help-item">
+            <h4>Game Modes</h4>
+            <p><strong>Time Attack Mode:</strong> Practice for a set duration (1 to 10 minutes) and maximize your score.<br>
+            <strong>Arcade Mode (5 Lives):</strong> Start with 5 lives. Each mistake or timeout costs 1 life.<br>
+            <strong>Listen Mode:</strong> Pure listening practice. Plays Morse sound, pauses for ICR recognition time, reveals letter and speaks it via TTS automatically without keypresses or scoring.</p>
+        </div>
+
+        <div class="help-item">
+            <h4>Key Hit Delay & Combined Target Time</h4>
+            <p>Recognizing a character is mental; pressing the key is motor-physical. <strong>Key Hit Delay</strong> accounts for your physical motor reaction time (typically ~200 ms). Total target duration for full points equals <strong>ICR Mental Target + Key Hit Delay</strong>.</p>
+        </div>
+
+        <div class="help-item">
+            <h4>Scoring & Streaks</h4>
+            <p>Correct responses within the Combined Target Time yield maximum points. Answering before timeout awards partial points. Consecutive correct answers build up a <strong>Streak Multiplier (up to 3.0x)</strong>.</p>
+        </div>
+
+        <div class="help-item">
+            <h4>Text-To-Speech (TTS) Assistance</h4>
+            <p>If you fail to type a character within the TTS delay or make a mistake, the system speaks the correct character in the selected language using phonetic letter-name mapping to reinforce learning.</p>
+        </div>
+
+        <div class="help-item">
+            <h4>Static QRM (White Noise)</h4>
+            <p>Simulates real-world radio conditions by adding adjustable background white noise to improve noise immunity during practice.</p>
+        </div>
+
+        <div style="text-align: right; margin-top: 15px;">
+            <button type="button" class="btn-primary" style="flex: unset; padding: 6px 15px;" onclick="toggleHelpModal(false)">Close</button>
+        </div>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
